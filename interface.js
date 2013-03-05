@@ -34,12 +34,22 @@
 				});
 				mochaRun.apply(mocha, arguments);
 			},
-			onerror : function (one, two) {
+			onerror : function (dependencies) {
 				// In case of errors downloading dependencies just define a failing suite
 				describe("Loading dependencies", function () {
 					it("should load dependencies correctly", function () {
+						var invalid = [];
+						for (var type in missingDependencies) {
+							if (missingDependencies.hasOwnProperty(type) && missingDependencies[type]) {
+								for (var i = 0; i < missingDependencies[type].length; i += 1) {
+									if (!Aria.getClassRef(missingDependencies[type][i])) {
+										invalid.push(missingDependencies[type][i]);
+									}
+								}
+							}
+						}
 						expect().fail(function () {
-							return "Unable to load test dependencies";
+							return "Unable to load test dependencies of classes\n  " + invalid.join("\n  ");
 						});
 					});
 				});
