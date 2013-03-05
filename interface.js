@@ -207,8 +207,17 @@
 
 				// Add all the test methods taken from the prototype
 				for (var fnName in instance) {
-					if (/^test/.test(fnName) && typeof instance[fnName] === "function") {
-						it("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+					if (/^x?[tT]est/.test(fnName) && typeof instance[fnName] === "function") {
+						if (fnName.charAt(0) === "T") {
+							// Capital 'Test' means we only want to run this test
+							it.only("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+						} else if (fnName.charAt(0) === "x") {
+							// Test starting with x should be excluded
+							it.skip("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+						} else {
+							// Here we are in a standard 'test'
+							it("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+						}
 					} else if (fnName === "setUp") {
 						beforeEach(buildFixture(instance[fnName], instance));
 					} else if (fnName === "tearDown") {
