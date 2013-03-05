@@ -233,7 +233,7 @@
 					}
 				});
 			});
-			
+
 			describe("Checks after running test cases", function () {
 				it("shouldn't raise errors", function () {
 					// Let the test do some assertions on what happened after its death
@@ -278,6 +278,12 @@
 	function overrideTestEnd (name, instance, callback) {
 		if (!instance.notifyTestEnd.override) {
 			instance.notifyTestEnd = function (testName) {
+				if (/\(\)$/.test(testName)) {
+					// testName ends with (), this should be wrong but it's done by callAsyncMethod in
+					// aria.jsunit.TestCase which is calling notifyTestEnd(this._currentTestName)
+					// unless that is fixed, this needs to stay here
+					testName = testName.substring(0, testName.length - 2);
+				}
 				if (testName && testName in this.notifyTestEnd.callbacks) {
 					var back = this.notifyTestEnd.callbacks[testName];
 					delete this.notifyTestEnd.callbacks[testName];
@@ -285,10 +291,11 @@
 				} else {
 					var error;
 					// Try to guess which test is running
-					var runningTest = this._currentTestName.substring(0, test.length - 2);
-					if (runningTest && this.notifyTestEnd.callbacks[runningTest]) {
+					var runningTest = this._currentTestName.substring(0, this._currentTestName.length - 2);
+					if (runningTest && this.notifyTestEnd.callbacks[runningTest] && this.__logAppender) {
 						error = new Error("Calling notifyTestEnd for test '" + testName + "' while running '" + runningTest + "'.");
-						this.notifyTestEnd.callbacks[runningTest](error);
+						this.__logAppender.error(this.$classpath, error.message, "$notifyTestEnd", error);
+						this.notifyTestEnd.callbacks[runningTest]();
 					} else {
 						// No better option than letting this test fail (it'll wait for a timeout)
 						error = new Error("Calling notifyTestEnd for unknown test '" + testName + "'.");
