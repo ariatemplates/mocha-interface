@@ -1,0 +1,32 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mocha Tests</title>
+  <link rel="stylesheet" href="../node_modules/mocha/mocha.css" />
+  <script src="../node_modules/ariatemplates/src/aria/bootstrap.js"></script>
+</head>
+<body>
+  <div id="mocha"></div>
+  <script src="../node_modules/expect.js/expect.js"></script>
+  <script src="../node_modules/mocha/mocha.js"></script>
+  <script>mocha.setup('bdd')</script> 
+  <script src="../lib/Assert.js"></script>
+  <script src="../lib/MochaLogAppender.js"></script>
+  <script src="../lib/Tester.js"></script>
+  <script src="../interface.js"></script>
+
+  <!-- Test cases -->
+  <script src="asserts/errors/ExceptionInDispose.js"></script>
+  <script src="asserts/errors/ForgottenCallback.js"></script>
+  <script src="asserts/AsyncFailure.js"></script>
+  <script src="asserts/AsyncTest.js"></script>
+  <script src="asserts/CustomMessage.js"></script>
+  <script src="asserts/Fixtures.js"></script>
+  <script src="asserts/Log.js"></script>
+  <script src="asserts/SyncFailure.js"></script>
+  <script src="asserts/SyncTest.js"></script>
+  <script>
+    mocha.run();
+  </script>
+</body>
+</html>
