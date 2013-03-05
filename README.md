@@ -47,7 +47,7 @@ The scope of a test method is the test case and no return value is expected. The
 
 ### Assert
 
-The possible assertions that can be done from within a test case are defined in `[aria.jsuni.Assert](http://ariatemplates.com/aria/guide/apps/apidocs/#aria.jsunit.Assert)` and are
+The possible assertions that can be done from within a test case are defined in [`aria.jsunit.Assert`](http://ariatemplates.com/aria/guide/apps/apidocs/#aria.jsunit.Assert) and are
 
 * `assertTrue` / `assertFalse` Test if a value is true or false
 
