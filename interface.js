@@ -225,15 +225,21 @@
 					}
 				}
 
+				// Do some cleaning also after every test method ends
+				afterEach(function () {
+					// TODO mark undisposed objects (do it here to have a better granularity)
+					instance.clearLogs();
+				});
+
 				// After all tests we can dispose it and do some cleaning
 				after(function () {
+					instance.unregisterObject();
 					instance._restoreAppEnvironment();
 					if (aria.core.Timer._numberOfCallbacks > 0) {
 						logger.error(path, aria.core.Timer._numberOfCallbacks + " callback(s) remaining after test executions", "$callbacks");
 					}
 					aria.core.Timer.callbacksRemaining();
 
-					// TODO mark undisposed objects
 					try {
 						// we might have errors in the dispose as well
 						instance.$dispose();

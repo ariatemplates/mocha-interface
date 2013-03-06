@@ -168,6 +168,40 @@ Aria.classDefinition({
 });
 ````
 
+### Listening events
+
+In some cases we want to assert that an event has been raised or not by a given class. This is a basic form of spy.
+
+`Assert` provides the following methods
+
+* `registerObject` / `unregisterObject` Listen to all events fired by a given object
+* `assertEventFired` / `assertEventNotFired` Assert that en event with a given name has been raised
+* `getEvent` Get the event object of a given event name, useful to assert that parameters are passed correctly.
+
+The following is an example test case using `assertEventFired`
+
+````js
+Aria.classDefinition({
+	$classpath : "Events",
+	$extends : "aria.jsunit.TestCase",
+	$dependencies : ["anotherClass"],
+	$prototype : {
+		testEventFired : function () {
+			// We mu register an object to be able to assert that it's raising events
+			this.registerObject(anotherClass);
+
+			// Call a method that raises an event
+			anotherClass.callMe();
+
+			this.assertEventFired("callMeDone");
+		}
+	}
+});
+````
+
+Note that the test runner automatically calls `unregisterObject` and `clearLogs` at the end of each test method.
+
+
 
 # Contributing
 
