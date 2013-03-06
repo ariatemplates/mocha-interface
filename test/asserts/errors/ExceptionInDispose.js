@@ -11,6 +11,15 @@ Aria.classDefinition({
 
 			tester.on("end", function () {
 				tester.hasError(/This is bad/);
+				// Since there was an error in the dispose, this will make Aria.dispose() report a not disposed object
+				for (var name in Aria.__undisposedObjects) {
+					if (Aria.__undisposedObjects.hasOwnProperty(name)) {
+						if (Aria.__undisposedObjects[name].$classpath === "errors.ExceptionInDispose") {
+							delete Aria.__undisposedObjects[name];
+							break;
+						}
+					}
+				}
 			});
 		}
 	}

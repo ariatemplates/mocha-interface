@@ -34,6 +34,7 @@
 					for (var i = 0; i < tests.length; i += 1) {
 						describeTest(tests[i]);
 					}
+					globalAssertion();
 				});
 				mochaRun.apply(mocha, arguments);
 			},
@@ -192,6 +193,7 @@
 		describe(path, function () {
 			// Test instance, needed now to extract the test methods
 			var instance = Aria.getClassInstance(path);
+			instance["aria:createdFromTest"] = path;
 			// Logger instance, specific to this test
 			var logger = new aria.core.log.MochaLogAppender(instance.$classpath);
 			// Mocha tester, the event emitter utility
@@ -230,8 +232,13 @@
 
 				// Do some cleaning also after every test method ends
 				afterEach(function () {
-					// TODO mark undisposed objects (do it here to have a better granularity)
 					instance.clearLogs();
+					instance.unregisterObject();
+					for (var id in Aria.__undisposedObjects) {
+						if (Aria.__undisposedObjects.hasOwnProperty(id) && !Aria.__undisposedObjects[id]["aria:createdFromTest"]) {
+							Aria.__undisposedObjects[id]["aria:createdFromTest"] = instance.$classpath + "." + instance._currentTestName;
+						}
+					}
 				});
 
 				// After all tests we can dispose it and do some cleaning
@@ -263,6 +270,24 @@
 			after(function () {
 				logger.$dispose();
 			});
+		});
+	}
+
+	// This holds the assertion that should be run before or after the main test suite
+	// Being run only once in the whole campaign it's the place to check framework initialization or disposal
+	function globalAssertion () {
+		after(function () {
+			var disposeInfo = Aria.dispose();
+			var not = [];
+			for (var key in disposeInfo.notDisposed) {
+				if (disposeInfo.notDisposed.hasOwnProperty(key)) {
+					var object = disposeInfo.notDisposed[key];
+					not.push(object.$classpath + " in " + object["aria:createdFromTest"]);
+				}
+			}
+			if (not.length > 0) {
+				throw new Error("Undisposed objects:\n  " + not.join("\n  "));
+			}
 		});
 	}
 
