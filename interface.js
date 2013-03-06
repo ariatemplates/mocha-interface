@@ -1,4 +1,7 @@
 (function () {
+	// Enable memory check mode, this makes sure that constructor call correctly the parent classes
+	Aria.memCheckMode = true;
+
 	// Store here Aria Templates methods that are overridden
 	var originalMethods = {
 		classDefinition : Aria.classDefinition,
@@ -143,7 +146,7 @@
 	// Whether or not a class is waiting for classes that are still in the pending list
 	function stillPendingOnOthers (list) {
 		for (var i = 0; i < list.length; i += 1) {
-			if (pendingClasses[list]) {
+			if (pendingClasses[list[i]]) {
 				// Damn yes, the class has not been loaded yet
 				return true;
 			}

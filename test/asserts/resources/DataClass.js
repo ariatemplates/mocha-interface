@@ -6,6 +6,7 @@ Aria.classDefinition({
 	$singleton : true,
 	$constructor : function () {
 		this.one = 1;
+		this.$DeadEnd.constructor.call(this);
 	},
 	$prototype : {
 		two : 2,
