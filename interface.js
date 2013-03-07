@@ -5,6 +5,9 @@
 	// Store here Aria Templates methods that are overridden
 	var originalMethods = {
 		classDefinition : Aria.classDefinition,
+		beanDefinitions : Aria.beanDefinitions,
+		interfaceDefinition : Aria.interfaceDefinition,
+		// resourcesDefinition and tplScriptDefinition are just aliases to classDefinition
 		loadClassDependencies : aria.core.ClassMgr.loadClassDependencies
 	};
 
@@ -18,7 +21,7 @@
 		// Start loading the classes here
 		for (var path in pendingClasses) {
 			if (pendingClasses.hasOwnProperty(path)) {
-				originalMethods.classDefinition.call(Aria, pendingClasses[path].definition);
+				pendingClasses[path].originalMethod.call(Aria, pendingClasses[path].definition);
 			}
 		}
 		var loadDescription = {
@@ -65,6 +68,8 @@
 		// Now that all tests are ready to be defined, restore the original methods
 		aria.core.ClassMgr.loadClassDependencies = originalMethods.loadClassDependencies;
 		Aria.classDefinition = originalMethods.classDefinition;
+		Aria.beanDefinitions = originalMethods.beanDefinitions;
+		Aria.interfaceDefinition = originalMethods.interfaceDefinition;
 
 		// Load test dependencies
 		Aria.load(loadDescription);
@@ -73,14 +78,25 @@
 	// All test cases are added directly to the page, this means they'll call Aria.classDefinition,
 	// redefine it to create again the asynchronous behavior needed by Aria Templates
 	Aria.classDefinition = function (definition) {
+		storePendingDefinition(definition, originalMethods.classDefinition, loadAndRegisterPossibleTest);
+	};
+	Aria.beanDefinitions = function (definition) {
+		storePendingDefinition(definition, originalMethods.beanDefinitions, loadAndRegisterBean);
+	};
+	Aria.interfaceDefinition = function (definition) {
+		storePendingDefinition(definition, originalMethods.interfaceDefinition, loadAndRegisterInterface);
+	};
+	function storePendingDefinition (definition, original, load) {
 		// Not all class definitions are actual tests
-		pendingClasses[definition.$classpath] = {
+		pendingClasses[definition.$classpath || definition.$package] = {
 			definition : definition,
 			waitsForSomething : false,
 			waitsForPendingClass : [],
-			loadClassArgs : []
+			loadClassArgs : [],
+			originalMethod : original,
+			loadCallback : load
 		};
-	};
+	}
 
 	// The original method filters out dependencies and tries to load them before calling the complete
 	// callback, override it to only extract dependencies.
@@ -110,7 +126,7 @@
 
 		if (!pendingClasses[path].waitsForSomething) {
 			// This class doesn't have any dependency, just load it cause it might be needed by other classes
-			loadAndRegisterPossibleTest(path, arguments);
+			pendingClasses[path].loadCallback(path, arguments);
 		}
 		// returning false tells the multi-loader that this loading is asynchronous
 		return false;
@@ -119,11 +135,26 @@
 	// Once the class definition has all its dependencies met, it can be loaded. Only after that it's possible
 	// to understand precisely whether this class extends from a TextCase or not
 	function loadAndRegisterPossibleTest (path, args) {
+		// calling the original method creates a loader for this class, so in case of error we get notified
 		originalMethods.loadClassDependencies.apply(aria.core.ClassMgr, args);
 		Aria.loadClass(path, path);
 		if (isTestCase(path)) {
 			pendingTests.push(path);
 		}
+		delete pendingClasses[path];
+	}
+
+	// Called once the bean definition is ready and doesn't have other dependencies
+	function loadAndRegisterBean (path, args) {
+		originalMethods.loadClassDependencies.apply(aria.core.ClassMgr, args);
+		aria.core.JsonValidator.__loadBeans(path);
+		delete pendingClasses[path];
+	}
+
+	// Called once the interface definition is ready
+	function loadAndRegisterInterface (path, args) {
+		originalMethods.loadClassDependencies.apply(aria.core.ClassMgr, args);
+		aria.core.Interfaces.loadInterface(pendingClasses[path].definition);
 		delete pendingClasses[path];
 	}
 
@@ -135,7 +166,7 @@
 				if (pendingClasses.hasOwnProperty(path)) {
 					if (pendingClasses[path].waitsForPendingClass.length === 0 || !stillPendingOnOthers(pendingClasses[path].waitsForPendingClass)) {
 						// be optimist, maybe the one I'm pending on was already loaded before in the loop
-						loadAndRegisterPossibleTest(path, pendingClasses[path].loadClassArgs);
+						pendingClasses[path].loadCallback(path, pendingClasses[path].loadClassArgs);
 					}
 				}
 			}
@@ -156,7 +187,7 @@
 	}
 
 	// A class is a Test Case only if it extends directly or from another class extending from aria.jsunit.TestCase
-	function isTestCase (path, definition) {
+	function isTestCase (path) {
 		var reference = Aria.getClassRef(path);
 		return superclass(reference).is("aria.jsunit.TestCase");
 	}
