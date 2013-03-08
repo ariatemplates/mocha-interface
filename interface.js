@@ -78,6 +78,10 @@
 	// All test cases are added directly to the page, this means they'll call Aria.classDefinition,
 	// redefine it to create again the asynchronous behavior needed by Aria Templates
 	Aria.classDefinition = function (definition) {
+		// class definitions might not have a $classpath
+		if (!definition.$classpath) {
+			definition.$classpath = (definition.$package ? definition.$package + "." : "") + definition.$class;
+		}
 		storePendingDefinition(definition, originalMethods.classDefinition, loadAndRegisterPossibleTest);
 	};
 	Aria.beanDefinitions = function (definition) {
