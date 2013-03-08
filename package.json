@@ -14,6 +14,6 @@
     "testacular" : "0.6.x"
   },
   "scripts" : {
-    "test" : "testacular start"
+    "test" : "testacular start --single-run"
   }
 }
