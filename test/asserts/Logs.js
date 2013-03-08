@@ -54,6 +54,16 @@ Aria.classDefinition({
 			expect(function () {
 				testCase.assertErrorInLogs();
 			}).to.throwException(/assertErrorInLogs was called with an empty error message/);
+		},
+
+		testAsserNonErrors : function () {
+			// All types of logs should be considered by assertError in logs
+			debugger;
+			this.$logWarn("F");
+			this.$logDebug("F");
+			this.$logInfo("F");
+
+			this.assertErrorInLogs("F", 3);
 		}
 	}
 });
