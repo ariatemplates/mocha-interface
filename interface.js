@@ -222,85 +222,104 @@
 	function describeTest (path) {
 		// Describe a test suite -> corresponds to a single test case in Aria Templates
 		describe(path, function () {
-			// Test instance, needed now to extract the test methods
-			var instance = Aria.getClassInstance(path);
-			instance["aria:createdFromTest"] = path;
-			// Logger instance, specific to this test
-			var logger = new aria.core.log.MochaLogAppender(instance.$classpath);
-			// Mocha tester, the event emitter utility
-			var tester = aria.mocha.Tester(logger);
-
-			// Describe the test cases because I want to run some tests after
-			describe("Test Cases", function () {
-				// Do some sand-boxing before running this test
-				before(function () {
-					// The logger instance was create during definition, but it's only added here to avoid
-					// getting messages from other tests
-					aria.core.Log.addAppender(logger);
-					instance.__logAppender = logger;
-					instance._saveAppEnvironment();
-				});
-
-				// Add all the test methods taken from the prototype
-				for (var fnName in instance) {
-					if (/^x?[tT]est/.test(fnName) && typeof instance[fnName] === "function") {
-						if (fnName.charAt(0) === "T") {
-							// Capital 'Test' means we only want to run this test
-							it.only("should pass " + fnName, buildTestFunction(fnName, instance, tester));
-						} else if (fnName.charAt(0) === "x") {
-							// Test starting with x should be excluded
-							it.skip("should pass " + fnName, buildTestFunction(fnName, instance, tester));
-						} else {
-							// Here we are in a standard 'test'
-							it("should pass " + fnName, buildTestFunction(fnName, instance, tester));
-						}
-					} else if (fnName === "setUp") {
-						beforeEach(buildFixture(instance[fnName], instance));
-					} else if (fnName === "tearDown") {
-						afterEach(buildFixture(instance[fnName], instance));
-					}
-				}
-
-				// Do some cleaning also after every test method ends
-				afterEach(function () {
-					instance.clearLogs();
-					instance.unregisterObject();
-					for (var id in Aria.__undisposedObjects) {
-						if (Aria.__undisposedObjects.hasOwnProperty(id) && !Aria.__undisposedObjects[id]["aria:createdFromTest"]) {
-							Aria.__undisposedObjects[id]["aria:createdFromTest"] = instance.$classpath + "." + instance._currentTestName;
-						}
-					}
-				});
-
-				// After all tests we can dispose it and do some cleaning
-				after(function () {
-					instance.unregisterObject();
-					instance._restoreAppEnvironment();
-					if (aria.core.Timer._numberOfCallbacks > 0) {
-						logger.error(path, aria.core.Timer._numberOfCallbacks + " callback(s) remaining after test executions", "$callbacks");
-					}
-					aria.core.Timer.callbacksRemaining();
-
-					try {
-						// we might have errors in the dispose as well
-						instance.$dispose();
-					} catch (ex) {
-						logger.error(path, "Unhandled Exception in $dispose", "$dispose", ex);
-					}
-				});
-			});
-
-			describe("Checks after running test cases", function () {
-				it("shouldn't raise errors", function () {
-					// Let the test do some assertions on what happened after its death
+			var instance, logger, tester;
+			try {
+				// Logger instance, specific to this test
+				logger = new aria.core.log.MochaLogAppender(path);
+				// Mocha tester, the event emitter utility
+				tester = aria.mocha.Tester(logger);
+				// Test instance, needed now to extract the test methods
+				instance = Aria.getClassInstance(path, tester);
+				instance["aria:createdFromTest"] = path;
+			} catch (ex) {
+				logger.error(path, "Unhandled Exception in $constructor", "$constructor", ex);
+				it("shouldn't fail when calling the test constructor", function () {
 					tester.raise("end");
 					expect(logger.messages.error).to.be.empty();
+					logger.$dispose();
 				});
+			}
+
+			if (instance) {
+				describeTestMethods(instance, logger, tester);
+			}
+		});
+	}
+
+	function describeTestMethods (instance, logger, tester) {
+		// Describe the test cases because I want to run some tests after
+		describe("Test Cases", function () {
+			// Do some sand-boxing before running this test
+			before(function () {
+				// The logger instance was created during definition, but it's only added here to avoid
+				// getting messages from other tests
+				aria.core.Log.addAppender(logger);
+				instance.__logAppender = logger;
+				instance._saveAppEnvironment();
+				tester.raise("begin");
 			});
 
-			after(function () {
-				logger.$dispose();
+			// Add all the test methods taken from the prototype
+			for (var fnName in instance) {
+				if (/^x?[tT]est/.test(fnName) && typeof instance[fnName] === "function") {
+					if (fnName.charAt(0) === "T") {
+						// Capital 'Test' means we only want to run this test
+						it.only("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+					} else if (fnName.charAt(0) === "x") {
+						// Test starting with x should be excluded
+						it.skip("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+					} else {
+						// Here we are in a standard 'test'
+						it("should pass " + fnName, buildTestFunction(fnName, instance, tester));
+					}
+				} else if (fnName === "setUp") {
+					beforeEach(buildFixture(instance[fnName], instance));
+				} else if (fnName === "tearDown") {
+					afterEach(buildFixture(instance[fnName], instance));
+				}
+			}
+
+			// Do some cleaning also after every test method ends
+			afterEach(function () {
+				instance.clearLogs();
+				instance.unregisterObject();
+				for (var id in Aria.__undisposedObjects) {
+					if (Aria.__undisposedObjects.hasOwnProperty(id) && !Aria.__undisposedObjects[id]["aria:createdFromTest"]) {
+						Aria.__undisposedObjects[id]["aria:createdFromTest"] = instance.$classpath + "." + instance._currentTestName;
+					}
+				}
+				tester.raise("after_" + instance._currentTestName.slice(0, -2));
+				instance._currentTestName = null;
 			});
+
+			// After all tests we can dispose it and do some cleaning
+			after(function () {
+				instance.unregisterObject();
+				instance._restoreAppEnvironment();
+				if (aria.core.Timer._numberOfCallbacks > 0) {
+					logger.error(instance.$classpath, aria.core.Timer._numberOfCallbacks + " callback(s) remaining after test executions", "$callbacks");
+				}
+				aria.core.Timer.callbacksRemaining();
+
+				try {
+					// we might have errors in the dispose as well
+					instance.$dispose();
+				} catch (ex) {
+					logger.error(instance.$classpath, "Unhandled Exception in $dispose", "$dispose", ex);
+				}
+			});
+		});
+
+		describe("Checks after running test cases", function () {
+			it("shouldn't raise errors", function () {
+				// Let the test do some assertions on what happened after its death
+				tester.raise("end");
+				expect(logger.messages.error).to.be.empty();
+			});
+		});
+
+		after(function () {
+			logger.$dispose();
 		});
 	}
 
@@ -328,12 +347,14 @@
 			testFunction = function (callback) {
 				instance._currentTestName = testName + "()";
 				overrideTestEnd(testName, instance, callback);
-				instance[testName].call(instance, tester);
+				tester.raise("before_" + testName);
+				instance[testName].call(instance);
 			};
 		} else {
 			testFunction = function () {
 				instance._currentTestName = testName + "()";
-				instance[testName].call(instance, tester);
+				tester.raise("before_" + testName);
+				instance[testName].call(instance);
 			};
 		}
 		// For a better report in the viewer, we want to display the original code, not the generated method
@@ -356,7 +377,7 @@
 					// testName ends with (), this should be wrong but it's done by callAsyncMethod in
 					// aria.jsunit.TestCase which is calling notifyTestEnd(this._currentTestName)
 					// unless that is fixed, this needs to stay here
-					testName = testName.substring(0, testName.length - 2);
+					testName = testName.slice(0, -2);
 				}
 				if (testName && testName in this.notifyTestEnd.callbacks) {
 					var back = this.notifyTestEnd.callbacks[testName];
@@ -365,7 +386,7 @@
 				} else {
 					var error;
 					// Try to guess which test is running
-					var runningTest = this._currentTestName.substring(0, this._currentTestName.length - 2);
+					var runningTest = this._currentTestName.slice(0, -2);
 					if (runningTest && this.notifyTestEnd.callbacks[runningTest] && this.__logAppender) {
 						error = new Error("Calling notifyTestEnd for test '" + testName + "' while running '" + runningTest + "'.");
 						this.__logAppender.error(this.$classpath, error.message, "$notifyTestEnd", error);
@@ -376,7 +397,6 @@
 						this.fail(error);
 					}
 				}
-				this._currentTestName = null;
 			};
 			instance.notifyTestEnd.override = true;
 			instance.notifyTestEnd.callbacks = {};

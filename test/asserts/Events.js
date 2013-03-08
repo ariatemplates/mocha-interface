@@ -2,11 +2,23 @@ Aria.classDefinition({
 	$classpath : "Events",
 	$extends : "aria.jsunit.TestCase",
 	$dependencies : ["resources.EventRaiser"],
+	$constructor : function (tester) {
+		this.eventEmitter = null;
+		var testCase = this;
+		tester.on("after_testAutomaticUnregister", function () {
+			expect(testCase.eventEmitter._listeners["*"]).not.to.be.ok();
+			testCase.eventEmitter.$dispose();
+		});
+		this.$TestCase.constructor.call(this);
+	},
 	$prototype : {
+		setUp : function () {
+			this.eventEmitter = Aria.getClassInstance("resources.EventRaiser");
+			this.registerObject(this.eventEmitter);
+		},
+
 		testEventFired : function () {
 			var testCase = this;
-			var eventEmitter = Aria.getClassInstance("resources.EventRaiser");
-			this.registerObject(eventEmitter);
 
 			// No events were thrown yet
 			expect(function () {
@@ -14,7 +26,7 @@ Aria.classDefinition({
 			}).to.throwException(/Expecting event 'one' to be fired/);
 
 			// Raise the event
-			eventEmitter.$raiseEvent("one");
+			this.eventEmitter.$raiseEvent("one");
 
 			testCase.assertEventFired("one");
 			expect(function () {
@@ -26,14 +38,11 @@ Aria.classDefinition({
 				testCase.assertEventFired("one");
 			}).to.throwException(/Expecting event 'one' to be fired/);
 
-			eventEmitter.$dispose();
+			this.eventEmitter.$dispose();
 		},
 
 		testEventDescription : function () {
-			var eventEmitter = Aria.getClassInstance("resources.EventRaiser");
-			this.registerObject(eventEmitter);
-
-			eventEmitter.$raiseEvent({
+			this.eventEmitter.$raiseEvent({
 				name : "two",
 				prop1 : 1,
 				prop2 : 2
@@ -45,46 +54,37 @@ Aria.classDefinition({
 				prop2 : 2
 			});
 
-			eventEmitter.$dispose();
+			this.eventEmitter.$dispose();
 		},
 
 		testEventNotFired : function () {
 			var testCase = this;
-			var eventEmitter = Aria.getClassInstance("resources.EventRaiser");
-			this.registerObject(eventEmitter);
 
-			eventEmitter.$raiseEvent("one");
+			this.eventEmitter.$raiseEvent("one");
 			expect(function () {
 				testCase.assertEventNotFired("one");
 			}).to.throwException(/Expecting event 'one' not to be fired/);
 
-			eventEmitter.$dispose();
+			this.eventEmitter.$dispose();
 		},
 
 		testUnregister : function () {
 			var testCase = this;
-			var eventEmitter = Aria.getClassInstance("resources.EventRaiser");
-			this.registerObject(eventEmitter);
 
 			// and now unregister
-			this.unregisterObject(eventEmitter);
+			this.unregisterObject(this.eventEmitter);
 
-			eventEmitter.$raiseEvent("one");
+			this.eventEmitter.$raiseEvent("one");
 
 			expect(function () {
 				testCase.assertEventFired("one");
 			}).to.throwException(/Expecting event 'one' to be fired/);
 
-			eventEmitter.$dispose();
+			this.eventEmitter.$dispose();
 		},
 
-		testAutomaticUnregister : function (tester) {
-			var eventEmitter = Aria.getClassInstance("resources.EventRaiser");
-			this.registerObject(eventEmitter);
-			tester.on("end", function () {
-				expect(eventEmitter._listeners["*"]).not.to.be.ok();
-				eventEmitter.$dispose();
-			});
+		testAutomaticUnregister : function () {
+			// this is handled by tester.on in the constructor
 		}
 	}
 });

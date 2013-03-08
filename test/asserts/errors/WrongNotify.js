@@ -1,16 +1,18 @@
 Aria.classDefinition({
 	$classpath : "errors.WrongNotify",
 	$extends : "aria.jsunit.TestCase",
+	$constructor : function (tester) {
+		tester.on("after_testAsyncWhatever", function () {
+			tester.hasError("$notifyTestEnd");
+		});
+		this.$TestCase.constructor.call(this);
+	},
 	$prototype : {
-		testAsyncWhatever : function (tester) {
+		testAsyncWhatever : function () {
 			var testCase = this;
 			setTimeout(function () {
 				testCase.notifyTestEnd("not really");
 			}, 10);
-
-			tester.on("end", function () {
-				tester.hasError("$notifyTestEnd");
-			});
 		},
 
 		testAsyncNotTooStrict : function () {
